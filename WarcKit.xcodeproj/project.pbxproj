@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		AE915CD82DA5B28E00AD9EB7 /* SwiftGzip in Frameworks */ = {isa = PBXBuildFile; productRef = AE915CD72DA5B28E00AD9EB7 /* SwiftGzip */; };
 		AEC6A71D2DA5963600482217 /* WarcKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = AEC6A7112DA5963500482217 /* WarcKit.framework */; };
 /* End PBXBuildFile section */
 
@@ -43,6 +44,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				AE915CD82DA5B28E00AD9EB7 /* SwiftGzip in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -106,6 +108,7 @@
 			);
 			name = WarcKit;
 			packageProductDependencies = (
+				AE915CD72DA5B28E00AD9EB7 /* SwiftGzip */,
 			);
 			productName = WarcKit;
 			productReference = AEC6A7112DA5963500482217 /* WarcKit.framework */;
@@ -161,6 +164,9 @@
 			);
 			mainGroup = AEC6A7072DA5963500482217;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				AE915CD62DA5B28E00AD9EB7 /* XCRemoteSwiftPackageReference "swift-gzip" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = AEC6A7122DA5963500482217 /* Products */;
 			projectDirPath = "";
@@ -344,6 +350,7 @@
 				BUILD_LIBRARY_FOR_DISTRIBUTION = YES;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_ASSET_PATHS = "";
 				DEVELOPMENT_TEAM = 7GEB3UCDV7;
 				DYLIB_COMPATIBILITY_VERSION = 1;
 				DYLIB_CURRENT_VERSION = 1;
@@ -386,6 +393,7 @@
 				BUILD_LIBRARY_FOR_DISTRIBUTION = YES;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_ASSET_PATHS = "";
 				DEVELOPMENT_TEAM = 7GEB3UCDV7;
 				DYLIB_COMPATIBILITY_VERSION = 1;
 				DYLIB_CURRENT_VERSION = 1;
@@ -496,6 +504,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		AE915CD62DA5B28E00AD9EB7 /* XCRemoteSwiftPackageReference "swift-gzip" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/mihai8804858/swift-gzip.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.1.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		AE915CD72DA5B28E00AD9EB7 /* SwiftGzip */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = AE915CD62DA5B28E00AD9EB7 /* XCRemoteSwiftPackageReference "swift-gzip" */;
+			productName = SwiftGzip;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = AEC6A7082DA5963500482217 /* Project object */;
 }
