@@ -9,13 +9,13 @@
 import Foundation
 
 struct CDXJParser {
-    static func parse(data: Data) throws -> [CDXJItem] {
+    static func parse(data: Data) throws -> CDXJItemCollection {
         guard let lines = String(data: data, encoding: .utf8)?
             .split(separator: "\n")
             .map({ $0.trimmingCharacters(in: .whitespacesAndNewlines) }) else {
             throw WarcKitError.invalidCDXJFile
         }
-        var items: [CDXJItem] = []
+        let items = CDXJItemCollection()
         lines.forEach { line in
             guard !line.hasPrefix("#") else { return }
             items.append(try! CDXJItem(line))

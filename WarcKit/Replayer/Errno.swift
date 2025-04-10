@@ -5,6 +5,7 @@
 //  Created by Vito Sartori on 09/04/25.
 //
 
+
 import Foundation
 
 public class Errno {

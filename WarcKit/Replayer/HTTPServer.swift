@@ -8,19 +8,19 @@
 import Foundation
 
 public protocol HTTPServerDelegate {
-    func handleRequest(_ request: HttpRequest, withResponse response: HTTPResponseWriter) async throws
+    func handleRequest(_ request: HTTPRequest, withResponse response: inout HTTPResponseWriter) async throws
 }
 
-open class HttpServer: HttpServerIO {
-    public var notFoundHandler: ((HttpRequest) -> HttpResponse)?
+open class HTTPServer: HttpServerIO {
+    public var notFoundHandler: ((HTTPRequest) -> HTTPResponseWriter)?
     public var requestDelegate: HTTPServerDelegate?
 
-    open func dispatch(_ request: HttpRequest) async throws -> HTTPResponseWriter {
-        let response = HTTPResponseWriter()
+    open override func dispatch(_ request: HTTPRequest) async throws -> HTTPResponseWriter {
+        var response = HTTPResponseWriter()
         if let del = requestDelegate {
-            try await del.handleRequest(request, withResponse: response)
+            try await del.handleRequest(request, withResponse: &response)
             return response
         }
-        return super.dispatch(request)
+        return try await super.dispatch(request)
     }
 }

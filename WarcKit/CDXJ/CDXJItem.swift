@@ -18,6 +18,7 @@ struct CDXJItem: Decodable {
     let length: Int64
     let offset: Int64
     let filename: String
+    var symbolicURL: String
 
     enum CodingKeys: String, CodingKey {
         case surt = "surt"
@@ -30,6 +31,8 @@ struct CDXJItem: Decodable {
         case offset = "offset"
         case filename = "filename"
     }
+
+    private static let httpSchemeRegex = try! Regex("https?://")
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
@@ -59,6 +62,7 @@ struct CDXJItem: Decodable {
         }
         offset = intOffset
         filename = try container.decode(String.self, forKey: .filename)
+        symbolicURL = rawUrl.replacing(CDXJItem.httpSchemeRegex, with: "")
     }
 
     init(_ line: String) throws {

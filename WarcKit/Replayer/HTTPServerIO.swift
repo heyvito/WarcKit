@@ -39,37 +39,23 @@ open class HttpServerIO {
 
     public var operating: Bool { return self.state == .running }
 
-    /// String representation of the IPv4 address to receive requests from.
-    /// It's only used when the server is started with `forceIPv4` option set to true.
-    /// Otherwise, `listenAddressIPv6` will be used.
     public var listenAddressIPv4: String?
 
-    /// String representation of the IPv6 address to receive requests from.
-    /// It's only used when the server is started with `forceIPv4` option set to false.
-    /// Otherwise, `listenAddressIPv4` will be used.
-    public var listenAddressIPv6: String?
-
-    private let queue = DispatchQueue(label: "swifter.httpserverio.clientsockets")
+    private let queue = DispatchQueue(label: "io.vito.warckit.replayer.httpServerIO")
 
     public func port() throws -> Int {
         return Int(try socket.port())
-    }
-
-    public func isIPv4() throws -> Bool {
-        return try socket.isIPv4()
     }
 
     deinit {
         stop()
     }
 
-    @available(macOS 10.10, *)
-    public func start(_ port: in_port_t = 8080, forceIPv4: Bool = false, priority: DispatchQoS.QoSClass = DispatchQoS.QoSClass.background) throws {
+    public func start(priority: DispatchQoS.QoSClass = DispatchQoS.QoSClass.background) throws {
         guard !self.operating else { return }
         stop()
         self.state = .starting
-        let address = forceIPv4 ? listenAddressIPv4 : listenAddressIPv6
-        self.socket = try Socket.tcpSocketForListen(port, forceIPv4, SOMAXCONN, address)
+        self.socket = try Socket.createSocket(withMaxPendingConnections: SOMAXCONN)
         self.state = .running
         DispatchQueue.global(qos: priority).async { [weak self] in
             guard let strongSelf = self else { return }
@@ -96,98 +82,69 @@ open class HttpServerIO {
     public func stop() {
         guard self.operating else { return }
         self.state = .stopping
-        // Shutdown connected peers because they can live in 'keep-alive' or 'websocket' loops.
-        for socket in self.sockets {
-            socket.close()
-        }
+
+        self.sockets.forEach { $0.close() }
+
         self.queue.sync {
             self.sockets.removeAll(keepingCapacity: true)
         }
+
         socket.close()
         self.state = .stopped
     }
 
-    open func dispatch(_ request: HttpRequest) -> (HTTPResponseWriter) {
-        return HTTPResponseWriter(headers: [], body: nil, status: 404, statusReason: "Not Found")
+    open func dispatch(_ request: HTTPRequest) async throws -> HTTPResponseWriter {
+        return HTTPResponseWriter(headers: [], body: nil, status: .notFound)
     }
 
     private func handleConnection(_ socket: Socket) {
-        let parser = HttpParser()
-        while self.operating, let request = try? parser.readHttpRequest(socket) {
-            let request = request
-            request.address = try? socket.peername()
-            let (params, handler) = self.dispatch(request)
-            request.params = params
-            let response = handler(request)
-            var keepConnection = parser.supportsKeepAlive(request.headers)
-            do {
-                if self.operating {
-                    keepConnection = try self.respond(socket, response: response, keepAlive: keepConnection)
+        let semaphore = DispatchSemaphore(value: 0)
+
+        Task {
+            defer { semaphore.signal() }
+            let parser = HTTPParser()
+            while self.operating, let request = try? parser.readHttpRequest(socket) {
+                let request = request
+                let resp = try await self.dispatch(request)
+                var keepConnection = parser.supportsKeepAlive(request.headers)
+                do {
+                    if self.operating {
+                        keepConnection = try self.respond(socket, response: resp, keepAlive: keepConnection)
+                    }
+                } catch {
+                    print("Failed to send response: \(error)")
                 }
-            } catch {
-                print("Failed to send response: \(error)")
+                if !keepConnection { break }
             }
-            if let session = response.socketSession() {
-                delegate?.socketConnectionReceived(socket)
-                session(socket)
-                break
-            }
-            if !keepConnection { break }
+            socket.close()
         }
-        socket.close()
-    }
-
-    private struct InnerWriteContext: HttpResponseBodyWriter {
-
-        let socket: Socket
-
-        func write(_ data: [UInt8]) throws {
-            try write(ArraySlice(data))
-        }
-
-        func write(_ data: ArraySlice<UInt8>) throws {
-            try socket.writeUInt8(data)
-        }
-
-        func write(_ data: NSData) throws {
-            try socket.writeData(data)
-        }
-
-        func write(_ data: Data) throws {
-            try socket.writeData(data)
-        }
+        semaphore.wait()
     }
 
     private func respond(_ socket: Socket, response: HTTPResponseWriter, keepAlive: Bool) throws -> Bool {
         guard self.operating else { return false }
 
-        var responseHeader = String()
+        var responseHeader = [response.status.statusLine]
 
-        responseHeader.append("HTTP/1.1 \(response.status) \(response.statusReason)\r\n")
-
-        let content = response.content()
-
-        if content.length >= 0 {
-            responseHeader.append("Content-Length: \(content.length)\r\n")
+        for header in response.headers {
+            responseHeader.append("\(header.0): \(header.1)")
         }
-
-        if keepAlive && content.length != -1 {
-            responseHeader.append("Connection: keep-alive\r\n")
-        }
-
-        for (name, value) in response.headers() {
-            responseHeader.append("\(name): \(value)\r\n")
-        }
-
+        
         responseHeader.append("\r\n")
 
-        try socket.writeUTF8(responseHeader)
-
-        if let writeClosure = content.write {
-            let context = InnerWriteContext(socket: socket)
-            try writeClosure(context)
+        if let body = response.body {
+            responseHeader.append("Content-Length: \(body.count)")
+            if keepAlive {
+                responseHeader.append("Connection: keep-alive\r\n")
+            }
         }
 
-        return keepAlive && content.length != -1
+        try socket.writeUTF8(responseHeader.joined(separator: "\r\n") + "\r\n")
+
+        if let body = response.body {
+            try socket.writeData(body)
+        }
+
+        return keepAlive && response.body != nil
     }
 }
